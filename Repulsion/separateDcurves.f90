@@ -256,7 +256,6 @@
     external CrootDeltaPLS, testCrootDelta
         w = 2d0*pi*oldP(3); f = oldP(3);
         theRoot = oldP(1)+(0d0, 1d0)*oldP(2)
-        !call CROOTW25(theRoot,step,epsCR,mx,IPP,testCrootDelta)
         call CROOTW25(theRoot,dzStep,SDCepsComplex,mx,IPP,CrootDeltaPLS)
         newP(1) = real(theRoot); newP(2) = imag(theRoot); newP(3) = oldP(3);
         oldP = newP
@@ -274,8 +273,6 @@
             n = sp2-sp1
             n = n/sqrt(n(1)**2+n(2)**2+n(3)**2)
             sp3 = sp2 + n*SDCstepComplex
-            !n(3) = step
-            !p3 = p2 + n
             call Croot13(sp3)
             write(fileNum, '(5E15.6E3)') sp3
             sp1 = sp2; sp2 = sp3;
@@ -284,11 +281,22 @@
     end
         
     
-    subroutine PlotAllCRcurves
-    use SDC_globals
+
+    subroutine PlotAllCRcurves ! открывает папку с файлами дисп. кривых, строит кривые от начальных точек f_sp(i), alfa_sp(i)
+    use SDC_globals;
     implicit none
+    integer i, fileNum
+    character(len=20) fileName, str
+    external str
         call initSeparateDcurves
-        open(301, file="C:\Users\tiama\OneDrive\Рабочий стол\IMMI\SDC Repulsion\Repulsion\DataFigs\separateDcurves\Steel1\Dcurves\CRcurve.txt", FORM='FORMATTED');
-        call CRcurve(p1, p2, 301)
-        close(301)
-    end
+        print*, 'Separate complex disp curves plotting has been started!'
+        do i = 1, SDcurvesNum
+            fileName = str(i)
+            fileNum = i+300
+            print*, 'Curve ', i, ' plotting has been started!'
+            open(unit=fileNum, file='.\DataFigs\separateDcurves\'//trim(curvesDir)//'\CDcurves\'//trim(fileName)//'.txt', FORM='FORMATTED')
+            call CRcurve(p1(:,i), p2(:,i), fileNum)
+            close(fileNum)
+            print*, 'Curve ', i, 'is done!'
+        enddo    
+    end subroutine PlotAllCRcurves

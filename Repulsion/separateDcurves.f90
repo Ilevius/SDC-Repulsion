@@ -267,8 +267,8 @@
     implicit none
     integer fileNum
     real*8 sp1(3), sp2(3), sp3(3), n(3)
-        write(fileNum, '(5E15.6E3)') p1
-        write(fileNum, '(5E15.6E3)') p2
+        write(fileNum, '(5E15.6E3)') sp1
+        write(fileNum, '(5E15.6E3)') sp2
         do 
             n = sp2-sp1
             n = n/sqrt(n(1)**2+n(2)**2+n(3)**2)
@@ -290,7 +290,7 @@
     external str
         call initSeparateDcurves
         print*, 'Separate complex disp curves plotting has been started!'
-        do i = 1, SDcurvesNum
+        do i = 4, SDcurvesNumComplex
             fileName = str(i)
             fileNum = i+300
             print*, 'Curve ', i, ' plotting has been started!'

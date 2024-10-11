@@ -1,13 +1,18 @@
     MODULE SDC_globals
-    integer resFileNo, freqsNum, SDcurvesNum, dotsNum
+    integer resFileNo, freqsNum, SDcurvesNum, SDcurvesNumComplex, dotsNum, mx, IPP
     character (len=40) curvesDir
-    real*8 fOld, alfaOld, SDCstep, SDCeps, fMax
+    real*8 fOld, alfaOld, SDCstep, SDCstepComplex, SDCeps, SDCepsComplex, fMax, fmaxComplex
     real*8 fMin, fStep, dzMin, dzMax, haminStep, haminEps
+    complex*16 dzStep
     
-    real*8, allocatable:: freqs(:), dzetas(:), resK11(:), f_sp(:), alfa_sp(:)
+    
+    real*8, allocatable:: freqs(:), dzetas(:), resK11(:), f_sp(:), alfa_sp(:), p1(:,:), p2(:,:)
     namelist /basicInfo/SDcurvesNum, fmax, SDCstep, SDCeps, curvesDir
-    namelist /startPoints/ f_sp, alfa_sp, fMax
+    namelist /startPoints/ f_sp, alfa_sp
     namelist /simpleDC/ dotsNum, fMin, dzMin, dzMax, haminStep, haminEps
+    namelist /basicInfoComplex/SDcurvesNumComplex, fmaxComplex, SDCstepComplex, dzStep, SDCepsComplex, mx, IPP
+    namelist /startPointsComplex/ p1, p2
+    
     
     CONTAINS 
         subroutine initSeparateDcurves
@@ -17,6 +22,9 @@
             allocate(f_sp(SDcurvesNum), alfa_sp(SDcurvesNum))
             read(1, startPoints)
             read(1, simpleDC)
+            read(1, basicInfoComplex)
+            allocate(p1(3, SDcurvesNumComplex), p2(3, SDcurvesNumComplex))
+            read(1, startPointsComplex)
             close(1)       
         end
     END MODULE
@@ -63,6 +71,25 @@
 	    arcRDabs = abs(c)
     end
     
+    
+    
+    function CrootDeltaPLS(alf) result(c) 
+    use Mult_Glob; 
+    implicit none
+    real(8) gm,angle; 
+    complex*16 alf,c,det
+	common/gm/gm/det/det
+        call MultiK_An(alf,gm,0d0)
+        c = 1d0/Kaz(3,3)
+    end
+    
+    
+    function testCrootDelta(alfa) result(res)
+    use Mult_Glob
+    implicit none
+    complex*16 alfa, res
+        res = alfa - sqrt(f+0.001) - cci*sqrt(f)
+    end
     
 
     subroutine SCP1(f0, alfa0, file)  ! Ќаходит точки дисперсионной кривой и записывает в файл соотв значени€ частоты и полюса, не переписывалась еще с момента как заработала
@@ -207,3 +234,61 @@
         write (str, *) k
         str = adjustl(str)
     end function str
+    
+    
+   
+!                                                         _______  _______  _______  _______ _________
+!                                                        (  ____ \(  ____ )(  ___  )(  ___  )\__   __/
+!                                                        | (    \/| (    )|| (   ) || (   ) |   ) (   
+!                                                        | |      | (____)|| |   | || |   | |   | |   
+!                                                        | |      |     __)| |   | || |   | |   | |   
+!                                                        | |      | (\ (   | |   | || |   | |   | |   
+!                                                        | (____/\| ) \ \__| (___) || (___) |   | |   
+!                                                        (_______/|/   \__/(_______)(_______)   )_(   
+                                             
+    
+    subroutine Croot13(oldP)
+    use Mult_Glob
+    use SDC_globals
+    implicit none
+    real*8 oldP(3), newP(3)
+    complex*16 theRoot, step, CrootDeltaPLS, testCrootDelta
+    external CrootDeltaPLS, testCrootDelta
+        w = 2d0*pi*oldP(3); f = oldP(3);
+        theRoot = oldP(1)+(0d0, 1d0)*oldP(2)
+        !call CROOTW25(theRoot,step,epsCR,mx,IPP,testCrootDelta)
+        call CROOTW25(theRoot,dzStep,SDCepsComplex,mx,IPP,CrootDeltaPLS)
+        newP(1) = real(theRoot); newP(2) = imag(theRoot); newP(3) = oldP(3);
+        oldP = newP
+    end
+    
+    
+    subroutine CRcurve(sp1, sp2, fileNum)
+    use SDC_globals
+    implicit none
+    integer fileNum
+    real*8 sp1(3), sp2(3), sp3(3), n(3)
+        write(fileNum, '(5E15.6E3)') p1
+        write(fileNum, '(5E15.6E3)') p2
+        do 
+            n = sp2-sp1
+            n = n/sqrt(n(1)**2+n(2)**2+n(3)**2)
+            sp3 = sp2 + n*SDCstepComplex
+            !n(3) = step
+            !p3 = p2 + n
+            call Croot13(sp3)
+            write(fileNum, '(5E15.6E3)') sp3
+            sp1 = sp2; sp2 = sp3;
+            if(sp3(3)>fmaxComplex .or. sp3(3)<0d0) exit
+        enddo
+    end
+        
+    
+    subroutine PlotAllCRcurves
+    use SDC_globals
+    implicit none
+        call initSeparateDcurves
+        open(301, file="C:\Users\tiama\OneDrive\–абочий стол\IMMI\SDC Repulsion\Repulsion\DataFigs\separateDcurves\Steel1\Dcurves\CRcurve.txt", FORM='FORMATTED');
+        call CRcurve(p1, p2, 301)
+        close(301)
+    end

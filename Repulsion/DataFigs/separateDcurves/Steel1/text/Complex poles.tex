@@ -1,0 +1,79 @@
+%2multibyte Version: 5.50.0.2960 CodePage: 1251
+%\usepackage[cp1251]{inputenc}
+
+
+\documentclass[a4paper,openany,oneside]{book}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[14pt]{extsizes}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage[cp1251]{inputenc}
+\usepackage{amssymb}
+\usepackage{mathtext}
+\usepackage[unicode]{hyperref}
+\usepackage{cmap}
+\usepackage[english,russian]{babel}
+\usepackage{longtable}
+\usepackage{float}
+\usepackage{graphicx}
+\usepackage[matrix,arrow,curve]{xy}
+\usepackage{ccaption}
+\usepackage{misccorr}
+\usepackage{indentfirst}
+\usepackage{soul}
+\usepackage{pgfplots}
+
+\setcounter{MaxMatrixCols}{10}
+%TCIDATA{OutputFilter=LATEX.DLL}
+%TCIDATA{Version=5.50.0.2960}
+%TCIDATA{Codepage=1251}
+%TCIDATA{<META NAME="SaveForMode" CONTENT="1">}
+%TCIDATA{BibliographyScheme=Manual}
+%TCIDATA{LastRevised=Wednesday, October 16, 2024 21:18:31}
+%TCIDATA{<META NAME="GraphicsSave" CONTENT="32">}
+
+\providecommand{\U}[1]{\protect\rule{.1in}{.1in}}
+\oddsidemargin -1cm \evensidemargin 0cm \textwidth 17cm \topmargin -0.5cm
+\renewcommand{\baselinestretch}{1,2}
+\textheight 25cm
+\pagestyle{myheadings}
+\numberwithin{equation}{section}
+\parindent 1,2cm
+\sloppy
+\pgfplotsset{width = 450pt}
+\pgfplotsset{experiment/.style = {red}}
+
+\begin{document}
+
+Из диссертации Оли взяты обезразмеренные параметры стали и для слоя 
+\begin{center}
+\begin{tabular}{|l|l|l|l|l|}
+\hline
+слой & $h,$ безразм. & $c_{p},$ безразм.
+& $c_{s},$ безразм. & $\rho ,$ 
+безразм. \\ \hline
+1 & \multicolumn{1}{|c|}{1} & \multicolumn{1}{|c|}{1,87} & 
+\multicolumn{1}{|c|}{1} & \multicolumn{1}{|c|}{1} \\ \hline
+\end{tabular}
+\end{center}
+получены с помощью CROOT и Repulsion следующие дисперсионные кривые
+
+\begin{figure}[H]
+\centering
+\includegraphics[scale=1]{poles.eps}
+\caption{Полюса}
+\end{figure}
+
+Соответствующий график из диссертации Оли
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{polesOlya.jpg}
+\caption{Полюса}
+\end{figure}
+
+"Перескок" голубой кривой не удалось исправить уменьшением шага. Буду применять предложенный Вами подход с делением на мешающий полюс.
+
+Почему у $A_0$ нулевая мнимая часть тоже пока не ясно.
+
+\end{document}

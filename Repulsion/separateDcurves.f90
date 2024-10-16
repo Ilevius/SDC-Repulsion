@@ -290,7 +290,7 @@
     external str
         call initSeparateDcurves
         print*, 'Separate complex disp curves plotting has been started!'
-        do i = 4, SDcurvesNumComplex
+        do i = 1, SDcurvesNumComplex
             fileName = str(i)
             fileNum = i+300
             print*, 'Curve ', i, ' plotting has been started!'

@@ -126,8 +126,9 @@
     use SDC_globals
     use Mult_Glob
     implicit none
-    integer fileNo, logNo, Ndz
+    integer fileNo, logNo, Ndz, forward
     real*8 arcStep, radStep, dz(20), arcDelta
+    real*8, allocatable:: abs_dz(:)
     complex*16 p, p1, p2
     external arcDelta
         write(fileNo, '(5E15.6E3)') p1
@@ -139,11 +140,16 @@
             if (Ndz == 1) then 
                 p1 = p2; p2 = p2 + p_c*exp(cci*dz(1));
                 write(fileNo, '(5E15.6E3)') real(p2), imag(p2)
-            else 
-                print*, 'To many poles', Ndz
-                Ndz = FLOOR(Ndz/2d0);
-                p1 = p2; p2 = p2 + p_c*exp(cci*dz(Ndz));
+            else if (Ndz>1) then
+                print*, 'RPolesTracer: To many poles!', Ndz
+                allocate(abs_dz(Ndz))
+                abs_dz = abs(dz(1:Ndz))
+                forward = minloc(abs_dz, DIM = 1)
+                deallocate(abs_dz)
+                p1 = p2; p2 = p2 + p_c*exp(cci*dz(forward));
                 write(fileNo, '(5E15.6E3)') real(p2), imag(p2)
+            else 
+                print*, 'RPolesTracer: No poles at all!', Ndz
             endif
         enddo
     
@@ -166,7 +172,7 @@
             open(unit=fileNum, file='.\DataFigs\separateDcurves\'//trim(curvesDir)//'\Dcurves\'//trim(fileName)//'.txt', FORM='FORMATTED')
             !call SCP1(f_sp(i), alfa_sp(i), fileNum)
             p1 = cmplx(0.116311d-1, 0.213963d0); p2 = cmplx(0.127131d-1,0.223904 );
-            call RPolesTracer(p1, p2, fileNum, 3d-2, SDCstep, 2)
+            call RPolesTracer(p1, p2, fileNum, 1d-2, SDCstep, 2)
             close(fileNum)
             print*, 'Curve ', i, 'is done!'
         enddo    

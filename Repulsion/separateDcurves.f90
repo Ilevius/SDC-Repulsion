@@ -1,18 +1,14 @@
     MODULE SDC_globals
-    integer resFileNo, freqsNum, SDcurvesNum, SDcurvesNumComplex, dotsNum, mx, IPP
+    integer resFileNo, freqsNum, SDcurvesNum, dotsNum
     character (len=40) curvesDir
-    real*8 fOld, alfaOld, SDCstep, SDCstepComplex, SDCeps, SDCepsComplex, fMax, fmaxComplex
+    real*8 fOld, alfaOld, SDCstep, SDCeps, fMax
     real*8 fMin, fStep, dzMin, dzMax, haminStep, haminEps
-    complex*16 dzStep
+    complex*16 pOld, p_c
     
-    
-    real*8, allocatable:: freqs(:), dzetas(:), resK11(:), f_sp(:), alfa_sp(:), p1(:,:), p2(:,:)
+    real*8, allocatable:: freqs(:), dzetas(:), resK11(:), f_sp(:), alfa_sp(:)
     namelist /basicInfo/SDcurvesNum, fmax, SDCstep, SDCeps, curvesDir
-    namelist /startPoints/ f_sp, alfa_sp
+    namelist /startPoints/ f_sp, alfa_sp, fMax
     namelist /simpleDC/ dotsNum, fMin, dzMin, dzMax, haminStep, haminEps
-    namelist /basicInfoComplex/SDcurvesNumComplex, fmaxComplex, SDCstepComplex, dzStep, SDCepsComplex, mx, IPP
-    namelist /startPointsComplex/ p1, p2
-    
     
     CONTAINS 
         subroutine initSeparateDcurves
@@ -22,9 +18,6 @@
             allocate(f_sp(SDcurvesNum), alfa_sp(SDcurvesNum))
             read(1, startPoints)
             read(1, simpleDC)
-            read(1, basicInfoComplex)
-            allocate(p1(3, SDcurvesNumComplex), p2(3, SDcurvesNumComplex))
-            read(1, startPointsComplex)
             close(1)       
         end
     END MODULE
@@ -62,34 +55,29 @@
     use SDC_globals;
     implicit none
 	real(8) gm,angle; 
-    complex*16 alf,c,det
+    complex*16 alf,det
 	common/gm/gm/det/det
-        w = 2d0*pi*(cos(angle)*SDCstep + fOld)
+        w = 2d0*pi*(cos(angle)*SDCstep + fOld); f=cos(angle)*SDCstep + fOld;
 	    alf = (sin(angle)*SDCstep + alfaOld)*(1d0,0d0)
 	    call MultiK_An(alf,gm,0d0)
-        c = 1d0/Kaz(3,3)
-	    arcRDabs = abs(c)
-    end
+        arcRDabs = 1d0/(abs(Kaz(1,1))+abs(Kaz(2,2))+abs(Kaz(3,3)))
+    end    
     
     
-    
-    function CrootDeltaPLS(alf) result(c) 
+    function arcDelta(angle) result(delta)
     use Mult_Glob; 
+    use SDC_globals;
     implicit none
-    real(8) gm,angle; 
-    complex*16 alf,c,det
+	real*8 gm,angle, delta
+    complex*16 alf,det, p_cur
 	common/gm/gm/det/det
-        call MultiK_An(alf,gm,0d0)
-        c = 1d0/Kaz(3,3)
+        p_cur = pOld + p_c*exp(cci*angle)
+        f = real(p_cur); w = 2d0*pi*f;
+        alf = imag(p_cur)*(1d0,0d0);
+	    call MultiK_An(alf,gm,0d0)
+        delta = 1d0/(abs(Kaz(1,1))+abs(Kaz(2,2))+abs(Kaz(3,3)))
     end
     
-    
-    function testCrootDelta(alfa) result(res)
-    use Mult_Glob
-    implicit none
-    complex*16 alfa, res
-        res = alfa - sqrt(f+0.001) - cci*sqrt(f)
-    end
     
 
     subroutine SCP1(f0, alfa0, file)  ! Ќаходит точки дисперсионной кривой и записывает в файл соотв значени€ частоты и полюса, не переписывалась еще с момента как заработала
@@ -101,7 +89,7 @@
     external arcRDabs
     !    !                                                                    первые шаги, подготовка к автоматике
         step = SDCstep; fOld = f0; alfaOld = alfa0;
-        call Hamin(arcRDabs, 0d0, pi, 1d-3, SDCeps, 20, dz, Ndz)
+        call Hamin(arcRDabs, 0d0, pi, 2d-3, SDCeps, 20, dz, Ndz)
         alfaNew = sin(dz(1))*SDCstep + alfaOld; fNew = cos(dz(1))*SDCstep + fOld;
         psi = atan( (fNew-fOld)/(alfaNew-alfaOld) );      
         w = 2d0*pi*fNew       
@@ -134,11 +122,39 @@
     end subroutine SCP1
     
     
+    subroutine RPolesTracer(p1, p2, fileNo, arcStep, radStep, logNo)
+    use SDC_globals
+    use Mult_Glob
+    implicit none
+    integer fileNo, logNo, Ndz
+    real*8 arcStep, radStep, dz(20), arcDelta
+    complex*16 p, p1, p2
+    external arcDelta
+        write(fileNo, '(5E15.6E3)') p1
+        write(fileNo, '(5E15.6E3)') p2
+        do 
+            p_c = p2 - p1; p_c = p_c/abs(p_c)*radStep;
+            pOld = p2;
+            call Hamin(arcDelta, -0.75d0*pi, 0.75d0*pi, arcStep, SDCeps, 20, dz, Ndz)
+            if (Ndz == 1) then 
+                p1 = p2; p2 = p2 + p_c*exp(cci*dz(1));
+                write(fileNo, '(5E15.6E3)') real(p2), imag(p2)
+            else 
+                print*, 'To many poles', Ndz
+                Ndz = FLOOR(Ndz/2d0);
+                p1 = p2; p2 = p2 + p_c*exp(cci*dz(Ndz));
+                write(fileNo, '(5E15.6E3)') real(p2), imag(p2)
+            endif
+        enddo
+    
+    end
+    
     
     subroutine plotAllcurves ! открывает папку с файлами дисп. кривых, строит кривые от начальных точек f_sp(i), alfa_sp(i)
     use SDC_globals;
     implicit none
     integer i, fileNum
+    complex*16 p1, p2
     character(len=20) fileName, str
     external str
         call initSeparateDcurves
@@ -148,7 +164,9 @@
             fileNum = i+300
             print*, 'Curve ', i, ' plotting has been started!'
             open(unit=fileNum, file='.\DataFigs\separateDcurves\'//trim(curvesDir)//'\Dcurves\'//trim(fileName)//'.txt', FORM='FORMATTED')
-            call SCP1(f_sp(i), alfa_sp(i), fileNum)
+            !call SCP1(f_sp(i), alfa_sp(i), fileNum)
+            p1 = cmplx(0.116311d-1, 0.213963d0); p2 = cmplx(0.127131d-1,0.223904 );
+            call RPolesTracer(p1, p2, fileNum, 3d-2, SDCstep, 2)
             close(fileNum)
             print*, 'Curve ', i, 'is done!'
         enddo    
@@ -234,69 +252,3 @@
         write (str, *) k
         str = adjustl(str)
     end function str
-    
-    
-   
-!                                                         _______  _______  _______  _______ _________
-!                                                        (  ____ \(  ____ )(  ___  )(  ___  )\__   __/
-!                                                        | (    \/| (    )|| (   ) || (   ) |   ) (   
-!                                                        | |      | (____)|| |   | || |   | |   | |   
-!                                                        | |      |     __)| |   | || |   | |   | |   
-!                                                        | |      | (\ (   | |   | || |   | |   | |   
-!                                                        | (____/\| ) \ \__| (___) || (___) |   | |   
-!                                                        (_______/|/   \__/(_______)(_______)   )_(   
-                                             
-    
-    subroutine Croot13(oldP)
-    use Mult_Glob
-    use SDC_globals
-    implicit none
-    real*8 oldP(3), newP(3)
-    complex*16 theRoot, step, CrootDeltaPLS, testCrootDelta
-    external CrootDeltaPLS, testCrootDelta
-        w = 2d0*pi*oldP(3); f = oldP(3);
-        theRoot = oldP(1)+(0d0, 1d0)*oldP(2)
-        call CROOTW25(theRoot,dzStep,SDCepsComplex,mx,IPP,CrootDeltaPLS)
-        newP(1) = real(theRoot); newP(2) = imag(theRoot); newP(3) = oldP(3);
-        oldP = newP
-    end
-    
-    
-    subroutine CRcurve(sp1, sp2, fileNum)
-    use SDC_globals
-    implicit none
-    integer fileNum
-    real*8 sp1(3), sp2(3), sp3(3), n(3)
-        write(fileNum, '(5E15.6E3)') sp1
-        write(fileNum, '(5E15.6E3)') sp2
-        do 
-            n = sp2-sp1
-            n = n/sqrt(n(1)**2+n(2)**2+n(3)**2)
-            sp3 = sp2 + n*SDCstepComplex
-            call Croot13(sp3)
-            write(fileNum, '(5E15.6E3)') sp3
-            sp1 = sp2; sp2 = sp3;
-            if(sp3(3)>fmaxComplex .or. sp3(3)<0d0) exit
-        enddo
-    end
-        
-    
-
-    subroutine PlotAllCRcurves ! открывает папку с файлами дисп. кривых, строит кривые от начальных точек f_sp(i), alfa_sp(i)
-    use SDC_globals;
-    implicit none
-    integer i, fileNum
-    character(len=20) fileName, str
-    external str
-        call initSeparateDcurves
-        print*, 'Separate complex disp curves plotting has been started!'
-        do i = 1, SDcurvesNumComplex
-            fileName = str(i)
-            fileNum = i+300
-            print*, 'Curve ', i, ' plotting has been started!'
-            open(unit=fileNum, file='.\DataFigs\separateDcurves\'//trim(curvesDir)//'\CDcurves\'//trim(fileName)//'.txt', FORM='FORMATTED')
-            call CRcurve(p1(:,i), p2(:,i), fileNum)
-            close(fileNum)
-            print*, 'Curve ', i, 'is done!'
-        enddo    
-    end subroutine PlotAllCRcurves

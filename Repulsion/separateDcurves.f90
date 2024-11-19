@@ -36,16 +36,18 @@
         dz = 0d0;
         vs = sqrt(C_6(6,6,1)/rho(1))
         open(unit=301, file='.\DataFigs\separateDcurves\'//trim(curvesDir)//'\Dcurves\simpleDcurves.txt', status='unknown')
+        write(301,'(A)') "%  f, MHz;           Re(dzeta);"
         fstep = (fmax - fmin)/freqsNum;
         print*, 'Regular, non separate d curver plot has been started'
         do i = 1, freqsNum
             f = fmin + fstep*(i-1); w = f*2d0*pi; kap2=w*hs(1)/vs;
             call Hamin(RDabs, dzMin, dzMax, haminStep, haminEps, 20, dz, Ndz)
             do j = 1, Ndz
-                write(301, '(5E15.6E3)') f, dz(j)*w, dz(j)
+                write(301, 1) f, dz(j)*w, dz(j)
             enddo    
         enddo
         close(301)
+        1       format(3F30.16)
     END SUBROUTINE RPolesDots
     
     
@@ -103,7 +105,7 @@
             call Hamin(arcHaminDelta, -0.75d0*pi, 0.75d0*pi, arcStep, SDCeps, 20, dz, Ndz)
             if (Ndz == 1) then 
                 p1 = p2; p2 = p2 + p_c*exp(cci*dz(1));
-                write(fileNo, 2) real(p2), imag(p2)
+                write(fileNo, 2) real(p2), imag(p2), 0d0
                 radStep = oldRadStep;
             else if (Ndz>1) then
                 !print*, 'RPolesTracer: To many poles!', Ndz
@@ -112,7 +114,7 @@
                 forward = minloc(abs_dz, DIM = 1)
                 deallocate(abs_dz)
                 p1 = p2; p2 = p2 + p_c*exp(cci*dz(forward));
-                write(fileNo, 2) real(p2), imag(p2)
+                write(fileNo, 2) real(p2), imag(p2), 0d0
                 radStep = oldRadStep;
             else 
                 !print*, 'RPolesTracer: No poles at all!', Ndz
@@ -140,6 +142,7 @@
             theP2 = p2(1, i) + (0d0, 1d0)*p2(2, i); 
             print*, 'Curve ', i, ' plotting has been started!'
             open(unit=fileNum, file='.\DataFigs\separateDcurves\'//trim(curvesDir)//'\Dcurves\'//trim(fileName)//'.txt', FORM='FORMATTED')
+            write(fileNum,'(A)') "%  f, MHz;           Re(dzeta);              Im(dzeta)"
             call RPoleTracer(theP1, theP2, fileNum, 1d-2, SDCstep, fmax, 2)
             close(fileNum)
             print*, 'Curve ', i, 'is done!'
@@ -167,6 +170,7 @@
             print*, 'Curve ', i, 'residues plotting has been started!'
             open(unit=oldfileNum, file='.\DataFigs\separateDcurves\'//trim(curvesDir)//'\Dcurves\'//trim(fileName)//'.txt', status='old')
             open(unit=newFileNum, file='.\DataFigs\separateDcurves\'//trim(curvesDir)//'\Residues\'//trim(fileName)//'.txt', FORM='FORMATTED')
+            write(newFileNum,'(A)') "%  f, MHz;           Re(dzeta);              abs(K11), abs(K13), abs(K31), abs(K33)"
             do
                 ! цикл читает файл дисп кривой построчно, находит вычеты и записывает в строку соответствующего файла вычетов
                 read(oldFileNum, *, iostat=io) freq, dzeta
@@ -227,48 +231,48 @@
         str = adjustl(str)
     end function str
     
-    
-    subroutine SCP1(f0, alfa0, file)  ! Находит точки дисперсионной кривой и записывает в файл соотв значения частоты и полюса, не переписывалась еще с момента как заработала
-    use SDC_globals;
-    use Mult_Glob; 
-    implicit none
-    integer  Ndz, choice, iterno, j, file
-    real*8 f0, alfa0, fNew, alfaNew, step, dz(20), psi, arcRDabs
-    external arcRDabs
-    !    !                                                                    первые шаги, подготовка к автоматике
-        step = SDCstep; fOld = f0; alfaOld = alfa0;
-        call Hamin(arcRDabs, 0d0, pi, 2d-3, SDCeps, 20, dz, Ndz)
-        alfaNew = sin(dz(1))*SDCstep + alfaOld; fNew = cos(dz(1))*SDCstep + fOld;
-        psi = atan( (fNew-fOld)/(alfaNew-alfaOld) );      
-        w = 2d0*pi*fNew       
-        write(file, '(4E15.6E3)') fNew, alfaNew
-        fNew = fOld; alfaNew = alfaOld;
-    !                                                                         автоматический режим
-        do 
-            iterno= 0;
-            do
-                call Hamin(arcRDabs, pi/3d0-psi, 2d0*pi/3d0-psi, 0.5d-3, SDCeps, 4, dz, Ndz)
-                if (Ndz>1) then
-                    !print*, Ndz
-                    choice = 1; 
-                    do j = 2, Ndz
-                        if ( abs(dz(j)-(pi/2d0 - psi)) < abs(dz(j-1)-(pi/2d0 - psi)) ) choice = j
-                    enddo
-                    exit;
-                else
-                    if (step < SDCstep) SDCstep = SDCstep*2d0
-                     choice = 1; exit;
-                endif    
-                iterno = iterno + 1; if (iterno > 5) exit;
-            enddo
-            alfaNew = sin(dz(choice))*SDCstep + alfaOld; fNew = cos(dz(choice))*SDCstep + fOld;
-            w = 2d0*pi*fNew        
-            write(file, '(4E15.6E3)') fNew, alfaNew
-            psi = atan( (fNew-fOld)/(alfaNew-alfaOld) ); fOld = fNew; alfaOld = alfaNew;
-            if (fNew>fmax) exit;
-        enddo 
-    end subroutine SCP1
-    
+    !
+    !subroutine SCP1(f0, alfa0, file)  ! Находит точки дисперсионной кривой и записывает в файл соотв значения частоты и полюса, не переписывалась еще с момента как заработала
+    !use SDC_globals;
+    !use Mult_Glob; 
+    !implicit none
+    !integer  Ndz, choice, iterno, j, file
+    !real*8 f0, alfa0, fNew, alfaNew, step, dz(20), psi, arcRDabs
+    !external arcRDabs
+    !!    !                                                                    первые шаги, подготовка к автоматике
+    !    step = SDCstep; fOld = f0; alfaOld = alfa0;
+    !    call Hamin(arcRDabs, 0d0, pi, 2d-3, SDCeps, 20, dz, Ndz)
+    !    alfaNew = sin(dz(1))*SDCstep + alfaOld; fNew = cos(dz(1))*SDCstep + fOld;
+    !    psi = atan( (fNew-fOld)/(alfaNew-alfaOld) );      
+    !    w = 2d0*pi*fNew       
+    !    write(file, '(4E15.6E3)') fNew, alfaNew
+    !    fNew = fOld; alfaNew = alfaOld;
+    !!                                                                         автоматический режим
+    !    do 
+    !        iterno= 0;
+    !        do
+    !            call Hamin(arcRDabs, pi/3d0-psi, 2d0*pi/3d0-psi, 0.5d-3, SDCeps, 4, dz, Ndz)
+    !            if (Ndz>1) then
+    !                !print*, Ndz
+    !                choice = 1; 
+    !                do j = 2, Ndz
+    !                    if ( abs(dz(j)-(pi/2d0 - psi)) < abs(dz(j-1)-(pi/2d0 - psi)) ) choice = j
+    !                enddo
+    !                exit;
+    !            else
+    !                if (step < SDCstep) SDCstep = SDCstep*2d0
+    !                 choice = 1; exit;
+    !            endif    
+    !            iterno = iterno + 1; if (iterno > 5) exit;
+    !        enddo
+    !        alfaNew = sin(dz(choice))*SDCstep + alfaOld; fNew = cos(dz(choice))*SDCstep + fOld;
+    !        w = 2d0*pi*fNew        
+    !        write(file, '(4E15.6E3)') fNew, alfaNew
+    !        psi = atan( (fNew-fOld)/(alfaNew-alfaOld) ); fOld = fNew; alfaOld = alfaNew;
+    !        if (fNew>fmax) exit;
+    !    enddo 
+    !end subroutine SCP1
+    !
     
     !subroutine plotAllcurves ! открывает папку с файлами дисп. кривых, строит кривые от начальных точек f_sp(i), alfa_sp(i)
     !use SDC_globals;

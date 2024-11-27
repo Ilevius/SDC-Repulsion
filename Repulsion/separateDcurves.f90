@@ -101,7 +101,7 @@
         do 
             p_c = p2 - p1; p_c = p_c/abs(p_c)*radStep;
             pOld = p2;
-            if (real(p2) > fmax .OR. real(p2)<=0d0) exit;
+            if (real(p2) > fmax .OR. real(p2)<=0d0 .OR. imag(p2)<=0d0) exit;
             call Hamin(arcHaminDelta, -0.75d0*pi, 0.75d0*pi, arcStep, SDCeps, 20, dz, Ndz)
             if (Ndz == 1) then 
                 p1 = p2; p2 = p2 + p_c*exp(cci*dz(1));
